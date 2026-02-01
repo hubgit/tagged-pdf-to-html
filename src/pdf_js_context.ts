@@ -9,8 +9,9 @@ declare global {
     var PDFJSDev: { test: () => boolean; eval: () => boolean } | undefined;
 }
 
-// Mock PDFJSDev globally for pdf.js to work
-if (typeof globalThis.PDFJSDev === "undefined") {
+const isBrowserEnv = typeof window !== "undefined" && typeof document !== "undefined";
+// Mock PDFJSDev globally for pdf.js to work (Node only).
+if (!isBrowserEnv && typeof globalThis.PDFJSDev === "undefined") {
     globalThis.PDFJSDev = {
         test: () => false,
         eval: () => false,
