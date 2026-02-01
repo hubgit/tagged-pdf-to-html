@@ -1,0 +1,14 @@
+\babel@toc {american}{}\relax 
+\contentsline {section}{\numberline {1}Document Structure and Sections}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Section with an Aside}{2}{subsection.1.1}%
+\contentsline {paragraph}{Run-in heading (deep level)}{2}{section*.2}%
+\contentsline {subsubsection}{\numberline {1.1.1}Nested Heading Level}{2}{subsubsection.1.1.1}%
+\contentsline {section}{\numberline {2}Block and Inline Elements}{2}{section.2}%
+\babel@toc {spanish}{}\relax 
+\babel@toc {american}{}\relax 
+\contentsline {section}{\numberline {3}Lists}{2}{section.3}%
+\contentsline {section}{\numberline {4}Tables}{3}{section.4}%
+\contentsline {section}{\numberline {5}Figures and Formulas}{3}{section.5}%
+\contentsline {section}{\numberline {6}Cross References and Links}{3}{section.6}%
+\contentsline {section}{\numberline {7}Interactive Form Elements}{4}{section.7}%
+\contentsline {section}{\numberline {8}Bibliography}{4}{section.8}%

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "#pdfjs/*": ["pdf.js/src/*"]
+    },
+    "allowImportingTsExtensions": true,
+    "isolatedDeclarations": true,
+    "declaration": true,
+    "noEmit": true,
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*", "test/**/*", "pdf.js/src/**/*"]
+}

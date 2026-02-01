@@ -1,0 +1,217 @@
+% !TeX program = lualatex
+% PDF-to-HTML derivation exercise document
+% Follows LaTeX Tagging Project recommendations (DocumentMetadata + tagging)
+
+\DocumentMetadata{
+  lang = en-US,
+  pdfversion = 2.0,
+  pdfstandard = ua-2,
+  pdfstandard = a-4f,
+  tagging = on,
+  tagging-setup = {math/setup=mathml-SE}
+}
+
+\documentclass[11pt]{article}
+
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\usepackage[english,spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{mwe}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{l3pdffield}
+
+\hypersetup{
+  pdftitle={PDF-to-HTML Derivation Algorithm Exercise},
+  pdfauthor={Tagging Exercise Generator},
+  pdfsubject={Tagged PDF structure coverage for derivation testing},
+  pdfkeywords={tagged PDF, PDF/UA, PDF to HTML, structure tree}
+}
+
+\title{PDF-to-HTML Derivation Algorithm Exercise}
+\author{Tagging Exercise Generator}
+\date{January 31, 2026}
+
+\begin{document}
+
+\Form % l3pdffield vs hyperref
+
+\maketitle
+\tableofcontents
+\newpage
+
+% Spec 5.2.1 Document structure elements
+\section{Document Structure and Sections}
+This document is intentionally structured to exercise section, article, and division mappings.
+It includes multiple heading levels, paragraphs, and blocks to drive role mapping.
+
+\subsection{Section with an Aside}
+% Spec 5.2.1 Art/Aside/Div mapping
+\begin{quote}
+This quoted block represents a tangential note that should map to a block quote element in HTML.
+\end{quote}
+
+\paragraph{Run-in heading (deep level)}
+% Spec 6.1 H7+ behavior
+This paragraph uses a deeper heading level to test mapping of heading levels beyond H6.
+
+% Spec 5.2.2 Headings
+\subsubsection{Nested Heading Level}
+This subsection is followed by a short paragraph.
+
+% Spec 5.2.3 Block elements
+\section{Block and Inline Elements}
+This paragraph includes \emph{emphasis}, \textbf{strong text}, and inline \texttt{code}.
+Here is a short inline quote: ``quoted content''.
+
+% Spec 8.5.1 TextPosition (sup/sub)
+Chemical notation: H\textsubscript{2}O and E = mc\textsuperscript{2}.
+
+% Spec 5.2.4 Inline elements and 6.7 Links
+See the \href{https://example.com}{external reference} and internal link to
+Section~\ref{sec:lists}.
+
+% Spec 9.7.1 Lang attribute
+\begin{otherlanguage}{spanish}
+Este parrafo en espanol debe estar etiquetado con el idioma correcto.
+\end{otherlanguage}
+
+% Spec 5.2.5 Lists and 6.5 Nested lists
+\section{Lists}\label{sec:lists}
+A list starting at 5 with a nested list and then a resumed list:
+
+\begin{enumerate}[start=5]
+  \item Level A1
+    \begin{enumerate}
+      \item Level B1
+      \item Level B2
+    \end{enumerate}
+  \item Level A2
+\end{enumerate}
+
+Some text outside the list, then resume the list:
+
+\begin{enumerate}[resume=true]
+  \item Level A3
+  \item Level A4
+\end{enumerate}
+
+An unordered list:
+\begin{itemize}
+  \item First bullet
+  \item Second bullet with \emph{emphasis}
+\end{itemize}
+
+A description list exercising label/body tagging:
+\begin{description}
+  \item[Term A] Definition for term A.
+  \item[Term B] Definition for term B with an inline \texttt{code} fragment.
+\end{description}
+
+% Spec 5.2.6 Tables and 6.2 Captions
+\section{Tables}
+\tagpdfsetup{table/header-rows={1,2}}
+\begin{table}[h]
+  \caption{Multi-row header table with header tagging}
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    \multicolumn{3}{c}{Quarterly Results} \\
+    \cmidrule(lr){1-3}
+    Department & Q1 & Q2 \\
+    \midrule
+    Sales & 120 & 135 \\
+    Support & 98 & 102 \\
+    R\&D & 210 & 222 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% Presentation table (layout only)
+\tagpdfsetup{table/tagging=presentation}
+\begin{tabular}{ccc}
+  \textbullet & \textbullet & \textbullet \\
+  --- & --- & ---
+\end{tabular}
+
+% Spec 5.2.7 Figures and 6.2.1 Figure captions
+\section{Figures and Formulas}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\linewidth,alt={Abstract geometric shapes used as a sample image}]{example-image}
+  \caption{A sample figure with required alternative text}
+\end{figure}
+
+Inline graphic with ActualText and a decorative artifact:
+\includegraphics[height=1.2em,actualtext={alpha}]{example-image-a} \quad
+\includegraphics[height=1.2em,artifact]{example-image-b}
+
+% Spec 9.2 Text content and 9.4 Images
+A paragraph containing an inline image should exercise inline figure handling.
+
+% Spec 9.7.4 Expansion text (E) and 7.4
+Abbreviation example: The mission uses \textbf{GPS} (Global Positioning System).
+
+% Spec 5.2.7 Formula and 9.1 Math content
+Inline math: $x^2 + y^2 = z^2$.
+
+Displayed math with a matrix:
+\[
+  \begin{pmatrix}
+    0 & 1 \\
+    1 & 0
+  \end{pmatrix}
+  \begin{pmatrix}
+    a & b \\
+    c & d
+  \end{pmatrix}
+  =
+  \begin{pmatrix}
+    c & d \\
+    a & b
+  \end{pmatrix}
+\]
+
+% Spec 6.7 Links and References
+\section{Cross References and Links}
+This sentence references Equation~\ref{eq:sample} and a section above.
+
+\begin{equation}\label{eq:sample}
+  E = mc^2
+\end{equation}
+
+% Spec 10 Widget annotations (forms)
+\section{Interactive Form Elements}
+\noindent
+\tagmcbegin{tag=Lbl}First name:\tagmcend\ \relax
+{\ExplSyntaxOn\pdffield_textfield:n { name=FirstName, width=0.4\linewidth }\ExplSyntaxOff}\\[0.5em]
+
+\noindent
+\tagmcbegin{tag=Lbl}Email:\tagmcend\ \relax
+{\ExplSyntaxOn\pdffield_textfield:n { name=Email, width=0.6\linewidth }\ExplSyntaxOff}\\[0.5em]
+
+\noindent
+\tagmcbegin{tag=Lbl}Subscribe to updates\tagmcend\ \relax
+{\ExplSyntaxOn\pdffield_checkbox:n { name=Subscribe }\ExplSyntaxOff}\\[0.5em]
+
+\noindent
+\tagmcbegin{tag=Lbl}Country:\tagmcend\ \relax
+{\ExplSyntaxOn\pdffield_choice:n { name=Country, values={USA,Canada,UK}, default={USA}, type=combo, width=0.4\linewidth }\ExplSyntaxOff}\\[0.5em]
+
+\noindent
+\tagmcbegin{tag=Lbl}Comments:\tagmcend\ \relax
+{\ExplSyntaxOn\pdffield_textfield:n { name=Comments, width=0.8\linewidth, height=2cm, setFf={Multiline} }\ExplSyntaxOff}\\[0.5em]
+% Push buttons use JavaScript actions that are not PDF/A-compliant.
+
+% Spec 5.2.9 Bibliography entries (BibEntry)
+\section{Bibliography}
+\begin{thebibliography}{9}
+  \bibitem{pdfua} PDF/UA-2 specification, ISO 14289-2.
+  \bibitem{tagging} LaTeX Tagging Project documentation.
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,53 @@
+{
+  "name": "@aeaton/tagged-pdf-to-html",
+  "version": "1.0.0",
+  "description": "Convert tagged PDF to HTML",
+  "repository": "https://github.com/hubgit/tagged-pdf-to-html.git",
+  "main": "./dist/node/index.mjs",
+  "module": "./dist/browser/index.js",
+  "types": "./dist/browser/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "imports": {
+    "#platform/canvas": {
+      "browser": "./src/platform/canvas.browser.ts",
+      "default": "./src/platform/canvas.node.ts"
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/browser/index.d.ts",
+      "browser": "./dist/browser/index.js",
+      "node": "./dist/node/index.js",
+      "default": "./dist/node/index.js"
+    }
+  },
+  "scripts": {
+    "build:browser:watch": "tsdown --watch --platform browser --dts --out-dir dist/browser",
+    "build:browser": "tsdown --platform browser --dts --out-dir dist/browser",
+    "build:node": "tsdown --platform node --dts --out-dir dist/node",
+    "build": "npm run build:browser && npm run build:node",
+    "build:demo": "vite build",
+    "prepublishOnly": "npm run build",
+    "demo": "vite",
+    "test": "vitest"
+  },
+  "keywords": [
+    "pdf"
+  ],
+  "author": "Alf Eaton <eaton.alf@gmail.com>",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "tsdown": "^0.20.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.89"
+  }
+}
