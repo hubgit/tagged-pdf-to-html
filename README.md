@@ -2,13 +2,6 @@
 
 A TypeScript library (mostly vibe-coded with Codex, Gemini and Claude) that implements the "Deriving HTML from PDF" algorithm using `pdf.js`.
 
-## Demo
-
-```sh
-serve .
-open http://localhost:3000/demo/
-```
-
 ## Features
 
 - Extracts HTML structure from Tagged PDF (using the Structure Tree).
@@ -30,12 +23,17 @@ console.log(html);
 
 ## Requirements
 
-- Node.js
-- `pdf.js` source code must be available in `pdf.js` relative to this project (as currently configured in `tsconfig.json`).
+- `pdf.js` is installed as a git submodule.
 
 ## Building
 
 ```bash
 npm install
 npm run build
+```
+
+## Demo
+
+```sh
+npm run demo
 ```
