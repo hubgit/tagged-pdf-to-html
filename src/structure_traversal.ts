@@ -1208,8 +1208,7 @@ async function processMCR(
 
     if (!Number.isInteger(mcid) || !pgRef) return { html: "", text: "", rootTag: null };
 
-    const rendered = await fetchContentForMCID(context, mcid as number, pgRef, bbox, imageAlt, preferVector, trimText);
-    return wrapMcidContent(rendered, mcid as number, pgRef);
+    return await fetchContentForMCID(context, mcid as number, pgRef, bbox, imageAlt, preferVector, trimText);
 }
 
 async function processMCID(
@@ -1221,20 +1220,7 @@ async function processMCID(
     preferVector?: boolean,
     trimText?: boolean
 ): Promise<RenderedContent> {
-    const rendered = await fetchContentForMCID(context, mcid, pgRef, bbox, imageAlt, preferVector, trimText);
-    return wrapMcidContent(rendered, mcid, pgRef);
-}
-
-function wrapMcidContent(rendered: RenderedContent, mcid: number, pgRef: Ref): RenderedContent {
-    if (!rendered.html) {
-        return rendered;
-    }
-    const mcidToken = `p${pgRef.toString()}_mc${mcid}`;
-    return {
-        ...rendered,
-        html: `<span data-pdf-mcid="${escapeHtml(mcidToken)}">${rendered.html}</span>`,
-        rootTag: "span"
-    };
+    return await fetchContentForMCID(context, mcid, pgRef, bbox, imageAlt, preferVector, trimText);
 }
 
 async function fetchContentForMCID(
