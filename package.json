@@ -25,7 +25,6 @@
     }
   },
   "scripts": {
-    "build:browser:watch": "tsdown --watch --platform browser --dts --out-dir dist/browser",
     "build:browser": "tsdown --platform browser --dts --out-dir dist/browser",
     "build:node": "tsdown --platform node --dts --out-dir dist/node",
     "build": "npm run build:browser && npm run build:node",
