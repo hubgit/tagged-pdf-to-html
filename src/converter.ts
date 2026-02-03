@@ -1,11 +1,20 @@
 
 import { PDFContext } from "./pdf_js_context.ts";
-import { traverseStructure } from "./structure_traversal.ts";
+import { traverseStructure, StructureMap } from "./structure_traversal.ts";
 import { generateCSS } from "./css_generator.ts";
 import { MetadataParser } from "#pdfjs/core/metadata_parser.js";
 import { processHeadAssociatedFiles } from "./associated_files.ts";
 import { Dict } from "#pdfjs/core/primitives.js";
 import { stringToPDFString } from "#pdfjs/shared/util.js";
+
+/** Serialize StructureMap to JSON-compatible object */
+function serializeStructureMap(structureMap: StructureMap): Record<string, { mcids: string[]; page: number }> {
+    const result: Record<string, { mcids: string[]; page: number }> = {};
+    for (const [elementId, mapping] of structureMap) {
+        result[elementId] = { mcids: mapping.mcids, page: mapping.page };
+    }
+    return result;
+}
 
 export async function convertToHTML(context: PDFContext): Promise<string> {
     const { structTreeRoot, rootDict } = context;
@@ -402,8 +411,17 @@ export async function convertToHTML(context: PDFContext): Promise<string> {
     // 4.3 Structure Elements
     // Note: Form fields are generated as individual controls during structure traversal
     // They function correctly without a global form wrapper (HTML5 allows standalone controls)
-    const bodyContent = await traverseStructure(context);
+    const { html: bodyContent, structureMap } = await traverseStructure(context);
     html += bodyContent;
+
+    // Embed structure map as JSON for cross-view synchronization
+    // This maps structure element IDs to their associated MCIDs and page numbers
+    if (structureMap.size > 0) {
+        const serializedMap = serializeStructureMap(structureMap);
+        html += `\n<script type="application/json" id="pdf-structure-map">\n`;
+        html += JSON.stringify(serializedMap);
+        html += `\n</script>\n`;
+    }
 
     html += `</body>\n</html>`;
 

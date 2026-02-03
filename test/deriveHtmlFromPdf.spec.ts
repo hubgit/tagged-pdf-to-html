@@ -920,4 +920,34 @@ describe("deriveHtmlFromPdf (SPECIFICATION.md compliance)", () => {
       expect(caption[1]).not.toMatch(/<table[^>]*>/i);
     }
   });
+
+  it("embeds structure map JSON for cross-view synchronization", () => {
+    // Check that the structure map script tag exists
+    expect(html).toMatch(/<script type="application\/json" id="pdf-structure-map">/);
+
+    // Extract and parse the structure map
+    const match = html.match(/<script type="application\/json" id="pdf-structure-map">\s*([\s\S]*?)\s*<\/script>/);
+    expect(match).not.toBeNull();
+
+    const structureMap = JSON.parse(match![1]);
+    expect(typeof structureMap).toBe("object");
+
+    // Check that there are entries in the map
+    const keys = Object.keys(structureMap);
+    expect(keys.length).toBeGreaterThan(0);
+
+    // Check that entries have the expected structure
+    for (const key of keys.slice(0, 5)) {
+      const entry = structureMap[key];
+      expect(entry).toHaveProperty("mcids");
+      expect(entry).toHaveProperty("page");
+      expect(Array.isArray(entry.mcids)).toBe(true);
+      expect(typeof entry.page).toBe("number");
+
+      // Check MCID format (p{refNum}R_mc{mcid} to match PDF.js text layer IDs)
+      for (const mcid of entry.mcids) {
+        expect(mcid).toMatch(/^p\d+R_mc\d+$/);
+      }
+    }
+  });
 });

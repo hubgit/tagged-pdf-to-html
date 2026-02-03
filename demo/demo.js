@@ -28,6 +28,11 @@ let currentScale = 1;
 let activeHtmlHighlights = [];
 const HTML_HIGHLIGHT_CLASS = "tag-highlight-html";
 
+// Structure map from HTML output: elementId -> { mcids: string[], page: number }
+let htmlStructureMap = null;
+// Reverse map: mcid -> elementId
+let mcidToElementMap = new Map();
+
 function setStatus(message) {
   statusEl.textContent = message;
 }
@@ -112,8 +117,164 @@ function ensureHtmlHighlightStyle(doc) {
       background: rgba(255, 214, 102, 0.35);
       scroll-margin: 80px;
     }
+    [id^="pdf-se-"], [id^="widget_"] {
+      cursor: pointer;
+    }
   `;
   doc.head?.append(style);
+}
+
+function loadStructureMapFromHtml() {
+  if (!htmlFrame?.contentDocument) {
+    return null;
+  }
+  const doc = htmlFrame.contentDocument;
+  const scriptEl = doc.getElementById("pdf-structure-map");
+  if (!scriptEl) {
+    return null;
+  }
+  try {
+    return JSON.parse(scriptEl.textContent || "{}");
+  } catch (e) {
+    console.warn("Failed to parse structure map:", e);
+    return null;
+  }
+}
+
+function buildMcidToElementMap(structMap) {
+  const map = new Map();
+  if (!structMap) {
+    return map;
+  }
+  for (const [elementId, info] of Object.entries(structMap)) {
+    for (const mcid of info.mcids || []) {
+      // Store the first element that references this MCID (closest in hierarchy)
+      if (!map.has(mcid)) {
+        map.set(mcid, { elementId, page: info.page });
+      }
+    }
+  }
+  return map;
+}
+
+function findTreeNodeByMcids(mcids) {
+  // Find the tree node that best matches the given MCIDs
+  // We look for nodes whose MCIDs overlap with the given set
+  if (!mcids.length) {
+    return null;
+  }
+
+  const mcidSet = new Set(mcids);
+  let bestMatch = null;
+  let bestOverlap = 0;
+
+  for (const [nodeId, cachedIds] of structNodeContentIds) {
+    if (!cachedIds || !cachedIds.length) {
+      continue;
+    }
+    const overlap = cachedIds.filter((id) => mcidSet.has(id)).length;
+    if (overlap > 0 && overlap > bestOverlap) {
+      bestOverlap = overlap;
+      bestMatch = nodeId;
+    }
+  }
+
+  if (bestMatch) {
+    const summary = structTreeEl?.querySelector(
+      `summary[data-node-id="${bestMatch}"]`
+    );
+    return summary || null;
+  }
+  return null;
+}
+
+function highlightHtmlElement(elementId) {
+  if (!htmlFrame?.contentDocument) {
+    return;
+  }
+  const doc = htmlFrame.contentDocument;
+  ensureHtmlHighlightStyle(doc);
+  clearHtmlHighlights();
+
+  const el = doc.getElementById(elementId);
+  if (el) {
+    el.classList.add(HTML_HIGHLIGHT_CLASS);
+    activeHtmlHighlights.push(el);
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function setupHtmlClickHandlers() {
+  if (!htmlFrame?.contentDocument) {
+    return;
+  }
+  const doc = htmlFrame.contentDocument;
+  ensureHtmlHighlightStyle(doc);
+
+  doc.body?.addEventListener("click", (event) => {
+    // Find the closest element with an ID that starts with "pdf-se-"
+    const target = event.target.closest('[id^="pdf-se-"], [id^="widget_"]');
+    if (!target) {
+      return;
+    }
+
+    const elementId = target.id;
+    if (!htmlStructureMap || !htmlStructureMap[elementId]) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const info = htmlStructureMap[elementId];
+    const mcids = info.mcids || [];
+
+    // Highlight the HTML element
+    clearHtmlHighlights();
+    target.classList.add(HTML_HIGHLIGHT_CLASS);
+    activeHtmlHighlights.push(target);
+
+    // Highlight PDF view
+    if (typeof info.page === "number") {
+      setActivePage(info.page, { scroll: true });
+    }
+
+    clearHighlights();
+    const highlighted = [];
+    for (const mcid of mcids) {
+      if (activeTextLayerEl) {
+        const el = activeTextLayerEl.querySelector(`#${escapeCssId(mcid)}`);
+        if (el) {
+          el.classList.add("tag-highlight");
+          highlighted.push(el);
+        }
+      }
+    }
+    activeHighlights = highlighted;
+    if (highlighted.length > 0) {
+      highlighted[0].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // Find and select the corresponding tree node
+    const treeNode = findTreeNodeByMcids(mcids);
+    if (treeNode) {
+      if (activeSummary && activeSummary !== treeNode) {
+        activeSummary.classList.remove("is-selected");
+      }
+      activeSummary = treeNode;
+      activeSummary.classList.add("is-selected");
+
+      // Expand parent details elements to make the node visible
+      let parent = treeNode.parentElement;
+      while (parent) {
+        if (parent.tagName === "DETAILS") {
+          parent.open = true;
+        }
+        parent = parent.parentElement;
+      }
+      treeNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
 }
 
 function highlightHtmlByIds(ids) {
@@ -124,14 +285,21 @@ function highlightHtmlByIds(ids) {
   ensureHtmlHighlightStyle(doc);
   clearHtmlHighlights();
   const highlighted = [];
-  for (const id of ids) {
-    const selector = `[data-pdf-mcid="${escapeCssId(id)}"]`;
-    const target = doc.querySelector(selector);
-    if (target) {
-      target.classList.add(HTML_HIGHLIGHT_CLASS);
-      highlighted.push(target);
+  const highlightedIds = new Set();
+
+  // Use the structure map to find elements by their MCIDs
+  for (const mcid of ids) {
+    const info = mcidToElementMap.get(mcid);
+    if (info && !highlightedIds.has(info.elementId)) {
+      const el = doc.getElementById(info.elementId);
+      if (el) {
+        el.classList.add(HTML_HIGHLIGHT_CLASS);
+        highlighted.push(el);
+        highlightedIds.add(info.elementId);
+      }
     }
   }
+
   activeHtmlHighlights = highlighted;
 }
 
@@ -211,12 +379,16 @@ function scrollHtmlToContentIds(ids) {
     return;
   }
   const doc = htmlFrame.contentDocument;
-  for (const id of ids) {
-    const selector = `[data-pdf-mcid="${escapeCssId(id)}"]`;
-    const target = doc.querySelector(selector);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
+
+  // Use the structure map to find elements
+  for (const mcid of ids) {
+    const info = mcidToElementMap.get(mcid);
+    if (info) {
+      const el = doc.getElementById(info.elementId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
     }
   }
 }
@@ -418,6 +590,55 @@ function setActivePage(index, { scroll = false } = {}) {
   }
 }
 
+function setupPdfTextLayerClickHandler(textLayer, pageIndex) {
+  textLayer.addEventListener("click", (event) => {
+    // Find element with an ID (MCID format: pageIndex_mcN)
+    const target = event.target.closest("[id]");
+    if (!target || !target.id) {
+      return;
+    }
+
+    const mcid = target.id;
+    // Check if this is a valid MCID format
+    if (!mcid.includes("_mc")) {
+      return;
+    }
+
+    event.stopPropagation();
+
+    // Highlight the clicked PDF element
+    clearHighlights();
+    target.classList.add("tag-highlight");
+    activeHighlights = [target];
+
+    // Find and highlight the corresponding HTML element
+    const info = mcidToElementMap.get(mcid);
+    if (info) {
+      highlightHtmlElement(info.elementId);
+    }
+
+    // Find and select the corresponding tree node
+    const treeNode = findTreeNodeByMcids([mcid]);
+    if (treeNode) {
+      if (activeSummary && activeSummary !== treeNode) {
+        activeSummary.classList.remove("is-selected");
+      }
+      activeSummary = treeNode;
+      activeSummary.classList.add("is-selected");
+
+      // Expand parent details elements
+      let parent = treeNode.parentElement;
+      while (parent) {
+        if (parent.tagName === "DETAILS") {
+          parent.open = true;
+        }
+        parent = parent.parentElement;
+      }
+      treeNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+}
+
 function createPageEntry(pageNumber) {
   if (!pdfPagesEl) {
     return;
@@ -443,6 +664,9 @@ function createPageEntry(pageNumber) {
   pageEl.addEventListener("click", () => {
     setActivePage(pageNumber - 1, { scroll: false });
   });
+
+  // Set up click handler for text layer elements
+  setupPdfTextLayerClickHandler(textLayer, pageNumber - 1);
 
   return { pageEl, stage, canvas, textLayer };
 }
@@ -584,6 +808,14 @@ pdfInput?.addEventListener("change", (event) => {
 
 htmlFrame?.addEventListener("load", () => {
   activeHtmlHighlights = [];
+
+  // Load and initialize the structure map from the embedded JSON
+  htmlStructureMap = loadStructureMapFromHtml();
+  mcidToElementMap = buildMcidToElementMap(htmlStructureMap);
+
+  // Set up click handlers for HTML element synchronization
+  setupHtmlClickHandlers();
+
   updateOriginalRolesFromHtml();
 });
 

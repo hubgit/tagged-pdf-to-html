@@ -21,7 +21,18 @@ interface TraversalContext {
     preferVector?: boolean;
     mathmlTokenContext?: boolean;
     idState: IdState;
+    structureMap: StructureMap;
+    currentElementId?: string;
 }
+
+/** Mapping from structure element ID to its associated MCIDs and page */
+export interface StructureElementMapping {
+    mcids: string[];
+    page: number;
+}
+
+/** Map of structure element IDs to their MCID mappings */
+export type StructureMap = Map<string, StructureElementMapping>;
 
 interface IdState {
     byRef: Map<string, string>;
@@ -100,16 +111,22 @@ function escapeHtml(unsafe: unknown): string {
 }
 
 
-export async function traverseStructure(context: PDFContext): Promise<string> {
+export interface TraversalResult {
+    html: string;
+    structureMap: StructureMap;
+}
+
+export async function traverseStructure(context: PDFContext): Promise<TraversalResult> {
     const { structTreeRoot } = context;
-    if (!structTreeRoot) return "";
+    if (!structTreeRoot) return { html: "", structureMap: new Map() };
 
     const children = structTreeRoot.dict.get("K");
     // Start with heading level 1 (or 0 if we want the first section to be h1)
     // Typically document root might not be a section.
     const idState: IdState = { byRef: new Map(), byDict: new WeakMap(), counter: 1 };
-    const rendered = await processChildren(context, children, null, { headingLevel: 1, idState });
-    return rendered.html;
+    const structureMap: StructureMap = new Map();
+    const rendered = await processChildren(context, children, null, { headingLevel: 1, idState, structureMap });
+    return { html: rendered.html, structureMap };
 }
 
 async function processChildren(
@@ -480,10 +497,7 @@ async function processStructElement(
                  context,
                  child,
                  inheritedPageRef,
-                 traversalCtx.bbox,
-                 traversalCtx.imageAlt,
-                 traversalCtx.preferVector,
-                 traversalCtx.mathmlTokenContext
+                 traversalCtx
              );
         }
         return { html: `<!-- MCID ${child} (No Page) -->`, text: "", rootTag: null };
@@ -510,10 +524,7 @@ async function processStructElement(
             context,
             childDict,
             inheritedPageRef,
-            traversalCtx.bbox,
-            traversalCtx.imageAlt,
-            traversalCtx.preferVector,
-            traversalCtx.mathmlTokenContext
+            traversalCtx
         );
     }
 
@@ -744,12 +755,19 @@ async function processStructElement(
     const expansionText = childDict.get("E") as string | undefined;
     const title = childDict.get("T") as string | undefined;
 
+    // Determine and record the element ID for structure mapping
+    let elementId: string;
     if (id) {
-        attrs += ` id="${escapeHtml(stringToPDFString(id))}"`;
+        elementId = stringToPDFString(id);
+        attrs += ` id="${escapeHtml(elementId)}"`;
     } else {
-        const generatedId = ensureGeneratedId(childOrRef, childDict, traversalCtx.idState);
-        attrs += ` id="${escapeHtml(generatedId)}"`;
+        elementId = ensureGeneratedId(childOrRef, childDict, traversalCtx.idState);
+        attrs += ` id="${escapeHtml(elementId)}"`;
     }
+
+    // Set currentElementId for tracking MCIDs in children
+    newTraversalCtx.currentElementId = elementId;
+
     if (lang) attrs += ` lang="${escapeHtml(stringToPDFString(lang))}"`;
 
     let altStr = "";
@@ -1198,41 +1216,48 @@ async function processMCR(
     context: PDFContext,
     mcr: Dict,
     inheritedPageRef: Ref | null,
-    bbox?: number[],
-    imageAlt?: string,
-    preferVector?: boolean,
-    trimText?: boolean
+    traversalCtx: TraversalContext
 ): Promise<RenderedContent> {
     const mcid = mcr.get("MCID");
     const pgRef = (mcr.getRaw("Pg") || inheritedPageRef) as Ref | null;
 
     if (!Number.isInteger(mcid) || !pgRef) return { html: "", text: "", rootTag: null };
 
-    return await fetchContentForMCID(context, mcid as number, pgRef, bbox, imageAlt, preferVector, trimText);
+    return await fetchContentForMCID(context, mcid as number, pgRef, traversalCtx);
 }
 
 async function processMCID(
     context: PDFContext,
     mcid: number,
     pgRef: Ref,
-    bbox?: number[],
-    imageAlt?: string,
-    preferVector?: boolean,
-    trimText?: boolean
+    traversalCtx: TraversalContext
 ): Promise<RenderedContent> {
-    return await fetchContentForMCID(context, mcid, pgRef, bbox, imageAlt, preferVector, trimText);
+    return await fetchContentForMCID(context, mcid, pgRef, traversalCtx);
 }
 
 async function fetchContentForMCID(
     context: PDFContext,
     mcid: number,
     pgRef: Ref,
-    bbox?: number[],
-    imageAlt?: string,
-    preferVector?: boolean,
-    trimText?: boolean
+    traversalCtx: TraversalContext
 ): Promise<RenderedContent> {
+    const { bbox, imageAlt, preferVector, mathmlTokenContext: trimText, currentElementId, structureMap } = traversalCtx;
     const pageIndex = await context.pdfDocument.catalog.getPageIndex(pgRef);
+
+    // Record the MCID in the structure map for the current element
+    // Use PDF.js format: p{refNum}R_mc{mcid} to match the text layer element IDs
+    if (currentElementId && pageIndex !== -1) {
+        const mcidKey = `p${pgRef.num}R_mc${mcid}`;
+        let mapping = structureMap.get(currentElementId);
+        if (!mapping) {
+            mapping = { mcids: [], page: pageIndex };
+            structureMap.set(currentElementId, mapping);
+        }
+        if (!mapping.mcids.includes(mcidKey)) {
+            mapping.mcids.push(mcidKey);
+        }
+    }
+
     if (pageIndex === -1) return { html: "", text: "", rootTag: null };
 
     let extractor = context.pageContentExtractors.get(pageIndex);
